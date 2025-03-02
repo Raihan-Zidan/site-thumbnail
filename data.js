@@ -2,7 +2,6 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // Cegah error favicon
     if (url.pathname === "/favicon.ico") {
       return new Response(null, { status: 204 });
     }
@@ -16,17 +15,14 @@ export default {
     }
 
     try {
-      // Pastikan URL memiliki protokol (http/https)
       const finalUrl = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
 
-      // Header dengan User-Agent browser agar tidak dianggap bot
       const headers = {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
       };
 
-      // Fetch halaman target dengan header tambahan
       const response = await fetch(finalUrl, { headers });
 
       if (!response.ok) {
@@ -35,48 +31,54 @@ export default {
 
       let images = [];
 
-      // Gunakan HTMLRewriter untuk menangkap gambar
+      const blockedPatterns = [
+        "logo",
+        "icon",
+        "placeholder",
+        "default",
+        "badge",
+        "avatar",
+        "user-verified",
+        "transparent",
+        "spacer",
+        "blank",
+      ];
+
       const rewriter = new HTMLRewriter()
         .on("img", {
           element(element) {
             let src = element.getAttribute("data-src") || element.getAttribute("src");
 
-            // Menangani srcset (ambil gambar terbesar)
             let srcset = element.getAttribute("srcset");
             if (!src && srcset) {
               const srcCandidates = srcset.split(",").map(item => item.trim().split(" ")[0]);
-              src = srcCandidates[srcCandidates.length - 1]; // Ambil resolusi terbesar
+              src = srcCandidates[srcCandidates.length - 1];
             }
 
             if (src) {
-              // Ubah URL relatif menjadi absolut
               if (!src.startsWith("http")) {
                 src = new URL(src, finalUrl).href;
               }
 
-              // Filter gambar yang tidak relevan
               const lowerSrc = src.toLowerCase();
-              if (
-                !lowerSrc.includes("logo") &&
-                !lowerSrc.includes("icon") &&
-                !lowerSrc.includes("placeholder") &&
-                !lowerSrc.includes("default") &&
-                !lowerSrc.endsWith(".svg") // Hindari ikon SVG
-              ) {
-                images.push(src);
+
+              // ❌ Abaikan gambar jika URL mengandung kata dalam blockedPatterns
+              if (blockedPatterns.some(pattern => lowerSrc.includes(pattern))) {
+                return;
               }
+
+              images.push(src);
             }
           },
         });
 
-      // Proses HTML dengan HTMLRewriter
-      const transformedResponse = await rewriter.transform(response).text();
+      await rewriter.transform(response).text();
 
       return new Response(JSON.stringify({ images }), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // ✅ CORS agar bisa diakses dari browser
+          "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
           "Access-Control-Allow-Headers": "*"
         },
