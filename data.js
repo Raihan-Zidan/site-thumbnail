@@ -34,7 +34,7 @@ export default {
       // ❌ Daftar pola gambar yang tidak diinginkan
       const blockedPatterns = [
         "logo", "icon", "placeholder", "default", "badge", "avatar",
-        "user-verified", "transparent", "spacer", "blank", ".svg", "amp"
+        "user-verified", "transparent", "spacer", "blank", ".svg", "amp", ".webp"
       ];
 
       const rewriter = new HTMLRewriter()
