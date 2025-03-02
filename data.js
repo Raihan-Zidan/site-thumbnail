@@ -33,7 +33,7 @@ export default {
 
       // ❌ Daftar pola gambar yang tidak diinginkan
       const blockedPatterns = [
-        "logo", "icon", "placeholder", "default", "badge", "avatar",
+        "logo", "icon", "placeholder", "default", "badge", "avatar", "wp-content",
         "user-verified", "transparent", "spacer", "blank", "svg", "amp", "webp"
       ];
 
@@ -90,7 +90,7 @@ export default {
       const isValidSite = validSiteNames.some(name => ogSiteName.includes(name));
 
       // ❌ Jika tidak ada `og:type` yang cocok dan bukan dari situs berita/artikel, jangan ambil gambar
-      if (!isValidType && !isValidSite) {
+      if (!isValidType) {
         return new Response(JSON.stringify({ images: [] }), { status: 200,         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
