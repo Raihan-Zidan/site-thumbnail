@@ -1,8 +1,13 @@
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const targetUrl = url.searchParams.get("url");
 
+    // Cegah error karena favicon request
+    if (url.pathname === "/favicon.ico") {
+      return new Response(null, { status: 204 }); // No Content
+    }
+
+    const targetUrl = url.searchParams.get("url");
     if (!targetUrl) {
       return new Response(JSON.stringify({ error: "Parameter 'url' diperlukan" }), {
         status: 400,
@@ -12,14 +17,20 @@ export default {
 
     try {
       const response = await fetch(`https://${targetUrl}`);
-      if (!response.ok) throw new Error("Gagal mengambil halaman");
+      if (!response.ok) throw new Error(`Gagal mengambil halaman: ${response.statusText}`);
       const html = await response.text();
 
-      // Menggunakan Cheerio dari CDN
-      const cheerio = await import("https://esm.sh/cheerio");
-      const $ = cheerio.load(html);
+      // Gunakan Cheerio dari CDN dengan error handling
+      let cheerio;
+      try {
+        cheerio = await import("https://esm.sh/cheerio");
+      } catch (err) {
+        throw new Error("Gagal memuat Cheerio");
+      }
 
+      const $ = cheerio.load(html);
       let images = [];
+
       $("img").each((i, img) => {
         let src = $(img).attr("src");
         if (src && !src.startsWith("http")) {
