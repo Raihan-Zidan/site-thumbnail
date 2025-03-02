@@ -16,6 +16,9 @@ export default {
     }
 
     try {
+      // Pastikan URL memiliki protokol (http/https)
+      const finalUrl = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
+
       // Header dengan User-Agent browser agar tidak dianggap bot
       const headers = {
         "User-Agent":
@@ -24,7 +27,7 @@ export default {
       };
 
       // Fetch halaman target dengan header tambahan
-      const response = await fetch(`https://${targetUrl}`, { headers });
+      const response = await fetch(finalUrl, { headers });
 
       if (!response.ok) {
         throw new Error(`Gagal mengambil halaman: ${response.status} ${response.statusText}`);
@@ -36,12 +39,19 @@ export default {
       const rewriter = new HTMLRewriter()
         .on("img", {
           element(element) {
-            let src = element.getAttribute("data-src") || element.getAttribute("src") || element.getAttribute("srcset");
+            let src = element.getAttribute("data-src") || element.getAttribute("src");
+
+            // Menangani srcset (ambil gambar terbesar)
+            let srcset = element.getAttribute("srcset");
+            if (!src && srcset) {
+              const srcCandidates = srcset.split(",").map(item => item.trim().split(" ")[0]);
+              src = srcCandidates[srcCandidates.length - 1]; // Ambil resolusi terbesar
+            }
 
             if (src) {
-              // Ubah URL relatif jadi absolut
+              // Ubah URL relatif menjadi absolut
               if (!src.startsWith("http")) {
-                src = new URL(src, `https://${targetUrl}`).href;
+                src = new URL(src, finalUrl).href;
               }
 
               // Filter gambar yang tidak relevan
@@ -60,11 +70,16 @@ export default {
         });
 
       // Proses HTML dengan HTMLRewriter
-      await rewriter.transform(response).text();
+      const transformedResponse = await rewriter.transform(response).text();
 
       return new Response(JSON.stringify({ images }), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // ✅ CORS agar bisa diakses dari browser
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "*"
+        },
       });
     } catch (error) {
       return new Response(JSON.stringify({ error: error.message }), {
