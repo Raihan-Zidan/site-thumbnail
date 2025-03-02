@@ -91,7 +91,12 @@ export default {
 
       // ❌ Jika tidak ada `og:type` yang cocok dan bukan dari situs berita/artikel, jangan ambil gambar
       if (!isValidType && !isValidSite) {
-        return new Response(JSON.stringify({ images: [] }), { status: 200 });
+        return new Response(JSON.stringify({ images: [] }), { status: 200,         headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "*"
+        }, });
       }
 
       return new Response(JSON.stringify({ images }), {
