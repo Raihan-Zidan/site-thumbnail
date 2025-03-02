@@ -2,7 +2,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // Cegah error karena favicon request
+    // Cegah error favicon
     if (url.pathname === "/favicon.ico") {
       return new Response(null, { status: 204 });
     }
@@ -20,17 +20,32 @@ export default {
       const response = await fetch(`https://${targetUrl}`);
       if (!response.ok) throw new Error(`Gagal mengambil halaman: ${response.statusText}`);
 
-      const images = [];
+      let images = [];
 
-      // Menggunakan Cloudflare HTMLRewriter untuk menangkap gambar
+      // Gunakan HTMLRewriter untuk menangkap gambar
       const rewriter = new HTMLRewriter()
         .on("img", {
           element(element) {
-            let src = element.getAttribute("src");
-            if (src && !src.startsWith("http")) {
-              src = new URL(src, `https://${targetUrl}`).href;
+            let src = element.getAttribute("data-src") || element.getAttribute("src") || element.getAttribute("srcset");
+
+            if (src) {
+              // Ubah URL relatif jadi absolut
+              if (!src.startsWith("http")) {
+                src = new URL(src, `https://${targetUrl}`).href;
+              }
+
+              // Filter gambar yang tidak relevan
+              const lowerSrc = src.toLowerCase();
+              if (
+                !lowerSrc.includes("logo") &&
+                !lowerSrc.includes("icon") &&
+                !lowerSrc.includes("placeholder") &&
+                !lowerSrc.includes("default") &&
+                !lowerSrc.endsWith(".svg") // Hindari ikon SVG
+              ) {
+                images.push(src);
+              }
             }
-            if (src) images.push(src);
           },
         });
 
