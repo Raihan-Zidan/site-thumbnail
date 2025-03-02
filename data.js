@@ -42,6 +42,8 @@ export default {
         "transparent",
         "spacer",
         "blank",
+        ".svg",
+        "amp"
       ];
 
       const rewriter = new HTMLRewriter()
