@@ -16,7 +16,6 @@ export default {
 
     try {
       const finalUrl = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
-
       const headers = {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
@@ -30,28 +29,29 @@ export default {
       }
 
       let images = [];
+      let metaTags = {};
 
+      // ❌ Daftar pola gambar yang tidak diinginkan
       const blockedPatterns = [
-        "logo",
-        "icon",
-        "placeholder",
-        "default",
-        "badge",
-        "avatar",
-        "user-verified",
-        "transparent",
-        "spacer",
-        "blank",
-        ".svg",
-        "amp"
+        "logo", "icon", "placeholder", "default", "badge", "avatar",
+        "user-verified", "transparent", "spacer", "blank", ".svg", "amp"
       ];
 
       const rewriter = new HTMLRewriter()
+        .on("meta", {
+          element(element) {
+            const property = element.getAttribute("property") || element.getAttribute("name");
+            const content = element.getAttribute("content");
+            if (property && content) {
+              metaTags[property.toLowerCase()] = content;
+            }
+          },
+        })
         .on("img", {
           element(element) {
             let src = element.getAttribute("data-src") || element.getAttribute("src");
-
             let srcset = element.getAttribute("srcset");
+
             if (!src && srcset) {
               const srcCandidates = srcset.split(",").map(item => item.trim().split(" ")[0]);
               src = srcCandidates[srcCandidates.length - 1];
@@ -63,8 +63,6 @@ export default {
               }
 
               const lowerSrc = src.toLowerCase();
-
-              // ❌ Abaikan gambar jika URL mengandung kata dalam blockedPatterns
               if (blockedPatterns.some(pattern => lowerSrc.includes(pattern))) {
                 return;
               }
@@ -75,6 +73,26 @@ export default {
         });
 
       await rewriter.transform(response).text();
+
+      // ✅ Jika ada `og:image`, prioritaskan
+      if (metaTags["og:image"]) {
+        images.unshift(metaTags["og:image"]);
+      }
+
+      // ✅ Cek apakah situs ini layak mendapatkan thumbnail
+      const validTypes = ["article", "blog", "news", "video"];
+      const validSiteNames = ["News", "Blog", "Magazine", "Review", "Media"];
+
+      const ogType = metaTags["og:type"] || "";
+      const ogSiteName = metaTags["og:site_name"] || "";
+
+      const isValidType = validTypes.some(type => ogType.includes(type));
+      const isValidSite = validSiteNames.some(name => ogSiteName.includes(name));
+
+      // ❌ Jika tidak ada `og:type` yang cocok dan bukan dari situs berita/artikel, jangan ambil gambar
+      if (!isValidType && !isValidSite) {
+        return new Response(JSON.stringify({ images: [] }), { status: 200 });
+      }
 
       return new Response(JSON.stringify({ images }), {
         status: 200,
