@@ -91,15 +91,34 @@ export default {
 
       // ❌ Jika tidak ada `og:type` yang cocok dan bukan dari situs berita/artikel, jangan ambil gambar
       if (!isValidType) {
-        return new Response(JSON.stringify({ images: [] }), { status: 200,         headers: {
+        return new Response(JSON.stringify({ images: [] }), { status: 200, headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
           "Access-Control-Allow-Headers": "*"
-        }, });
+        } });
       }
 
-      return new Response(JSON.stringify({ images }), {
+      // ✅ Filter gambar berdasarkan ukuran (hanya gambar > 180px)
+      const validImages = [];
+
+      for (const imgUrl of images) {
+        try {
+          const imgResponse = await fetch(imgUrl, { method: "HEAD" });
+          if (!imgResponse.ok) continue;
+
+          const width = parseInt(imgResponse.headers.get("x-image-width") || "0", 10);
+          const height = parseInt(imgResponse.headers.get("x-image-height") || "0", 10);
+
+          if (width > 180 && height > 180) {
+            validImages.push(imgUrl);
+          }
+        } catch (err) {
+          console.error("Gagal memeriksa ukuran gambar:", err);
+        }
+      }
+
+      return new Response(JSON.stringify({ images: validImages }), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
