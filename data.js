@@ -16,9 +16,19 @@ export default {
     }
 
     try {
-      // Fetch halaman target
-      const response = await fetch(`https://${targetUrl}`);
-      if (!response.ok) throw new Error(`Gagal mengambil halaman: ${response.statusText}`);
+      // Header dengan User-Agent browser agar tidak dianggap bot
+      const headers = {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      };
+
+      // Fetch halaman target dengan header tambahan
+      const response = await fetch(`https://${targetUrl}`, { headers });
+
+      if (!response.ok) {
+        throw new Error(`Gagal mengambil halaman: ${response.status} ${response.statusText}`);
+      }
 
       let images = [];
 
