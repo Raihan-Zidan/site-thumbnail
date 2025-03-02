@@ -4,7 +4,7 @@ export default {
 
     // Cegah error karena favicon request
     if (url.pathname === "/favicon.ico") {
-      return new Response(null, { status: 204 }); // No Content
+      return new Response(null, { status: 204 });
     }
 
     const targetUrl = url.searchParams.get("url");
@@ -16,28 +16,26 @@ export default {
     }
 
     try {
+      // Fetch halaman target
       const response = await fetch(`https://${targetUrl}`);
       if (!response.ok) throw new Error(`Gagal mengambil halaman: ${response.statusText}`);
-      const html = await response.text();
 
-      // Gunakan Cheerio dari CDN dengan error handling
-      let cheerio;
-      try {
-        cheerio = await import("https://esm.sh/cheerio");
-      } catch (err) {
-        throw new Error("Gagal memuat Cheerio");
-      }
+      const images = [];
 
-      const $ = cheerio.load(html);
-      let images = [];
+      // Menggunakan Cloudflare HTMLRewriter untuk menangkap gambar
+      const rewriter = new HTMLRewriter()
+        .on("img", {
+          element(element) {
+            let src = element.getAttribute("src");
+            if (src && !src.startsWith("http")) {
+              src = new URL(src, `https://${targetUrl}`).href;
+            }
+            if (src) images.push(src);
+          },
+        });
 
-      $("img").each((i, img) => {
-        let src = $(img).attr("src");
-        if (src && !src.startsWith("http")) {
-          src = new URL(src, `https://${targetUrl}`).href;
-        }
-        images.push(src);
-      });
+      // Proses HTML dengan HTMLRewriter
+      await rewriter.transform(response).text();
 
       return new Response(JSON.stringify({ images }), {
         status: 200,
